@@ -130,9 +130,25 @@ All API routes are prefixed with `/api`.
 *   `POST /inventory/medicines`: Add a new medicine to the inventory.
     *   Requires: Authentication Token, Admin or Manager role.
     *   Body: Medicine details (name, manufacturer, batchNumber, expiryDate, mrp, etc.).
-*   `GET /inventory/medicines`: Get a list of all medicines (paginated).
+*   `GET /inventory/medicines`: Get a list of all medicines.
     *   Requires: Authentication Token.
-    *   Query Params (optional): `page`, `limit`.
+    *   **Query Params (optional):**
+        *   `page` (int): Page number for pagination (defaults to 1).
+        *   `limit` (int): Number of items per page (defaults to 20).
+        *   `sortBy` (string): Field to sort the results by. Allowed fields: `_id`, `name`, `manufacturer`, `saltComposition`, `batchNumber`, `expiryDate`, `mrp`, `purchasePrice`, `quantityInStock`, `hsnCode`, `gstPercentage`, `scheduleType`, `barcode`, `createdAt`, `updatedAt`. Defaults to `expiryDate`.
+        *   `sortOrder` (string): Sort direction. 'asc' for ascending, 'desc' for descending. Defaults to `asc`.
+        *   `search` (string): Keyword to search for across multiple fields (name, manufacturer, saltComposition, batchNumber, hsnCode, scheduleType, barcode). Case-insensitive partial matching.
+        *   **Filtering Parameters:** Any of the fields listed for `sortBy` can be used as a query parameter to filter the results.
+            *   For string fields (e.g., `name`, `manufacturer`): Case-insensitive partial matching.
+            *   For numeric fields (e.g., `mrp`, `quantityInStock`): Exact matching.
+            *   For date fields (e.g., `expiryDate`, `createdAt`): Matches records within the specified date.
+            *   For `_id` and `lastUpdatedBy`: Exact ObjectId matching.
+
+    *   **Example Usage:**
+        ```
+        GET /api/inventory/medicines?page=2&limit=10&sortBy=name&sortOrder=desc&manufacturer=ABC&quantityInStock=500&search=tablet
+        ```
+
 *   `GET /inventory/medicines/:id`: Get details of a specific medicine by its ID.
     *   Requires: Authentication Token.
 *   `PUT /inventory/medicines/:id`: Update an existing medicine by its ID.

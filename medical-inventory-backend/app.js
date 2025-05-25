@@ -2,11 +2,15 @@ const express = require('express');
 require('dotenv').config();
 const connectDB = require('./config/db');
 const logger = require('./config/logger'); // Import logger
+const cors = require('cors'); // Import cors
 
 // Connect to database
 connectDB();
 
 const app = express();
+
+// Enable CORS for all origins (customize as needed)
+app.use(cors());
 
 // Middleware to parse JSON
 app.use(express.json());

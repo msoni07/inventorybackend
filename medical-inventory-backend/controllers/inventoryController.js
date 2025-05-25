@@ -1,5 +1,6 @@
 const Medicine = require('../models/Medicine');
 const logger = require('../config/logger'); // Import logger
+const mongoose = require('mongoose');
 
 // Add a new medicine
 const addMedicine = async (req, res) => {
@@ -73,25 +74,121 @@ const addMedicine = async (req, res) => {
 // Get all medicines
 const getAllMedicines = async (req, res) => {
   try {
-    // Basic pagination (can be enhanced)
+    // Basic pagination
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const medicines = await Medicine.find()
-      .populate('supplier', 'name contactPerson') // Example: Populate supplier name
-      .populate('lastUpdatedBy', 'username email') // Populate user who last updated
-      .sort({ expiryDate: 1 }) // Sort by expiry date (ascending)
+    // Sorting parameters
+    const sortField = req.query.sortBy || 'expiryDate'; // Default sort by expiryDate
+    const sortOrder = req.query.sortOrder === 'desc' ? -1 : 1; // Default ascending order
+
+    // Validate sort field to prevent injection
+    const allowedSortFields = [
+      'name', 'manufacturer', 'saltComposition', 'batchNumber', 
+      'expiryDate', 'mrp', 'purchasePrice', 'quantityInStock', 
+      'hsnCode', 'gstPercentage', 'scheduleType', 'barcode',
+      'createdAt', 'updatedAt'
+    ];
+
+    if (!allowedSortFields.includes(sortField)) {
+      return res.status(400).json({ 
+        message: 'Invalid sort field', 
+        allowedFields: allowedSortFields 
+      });
+    }
+
+    // Filtering parameters
+    const filter = {};
+    // Include all fields that can be sorted, plus _id and lastUpdatedBy for filtering
+    const allowedFilterFields = allowedSortFields.concat(['_id', 'lastUpdatedBy']);
+
+    for (const field of allowedFilterFields) {
+      if (req.query[field]) {
+        const schemaPath = Medicine.schema.paths[field];
+
+        if (schemaPath) {
+          // Handle different data types for filtering based on schema path instance type
+          if (schemaPath.instance === 'String') {
+            // Case-insensitive partial string matching
+            filter[field] = new RegExp(req.query[field], 'i');
+          } else if (schemaPath.instance === 'Date') {
+            // Exact date matching (within a day)
+            const date = new Date(req.query[field]);
+            if (!isNaN(date)) {
+              filter[field] = {
+                $gte: new Date(date.setHours(0, 0, 0, 0)),
+                $lt: new Date(date.setHours(23, 59, 59, 999))
+              };
+            } else {
+               logger.warn(`Invalid date format for filter field ${field}: ${req.query[field]}`);
+               // Optionally, send a 400 error for invalid date format
+               // return res.status(400).json({ message: `Invalid date format for filter field ${field}` });
+            }
+          } else if (schemaPath.instance === 'ObjectID'){
+             // Exact ObjectId matching
+             if (mongoose.Types.ObjectId.isValid(req.query[field])) {
+                filter[field] = new mongoose.Types.ObjectId(req.query[field]);
+             } else {
+                logger.warn(`Invalid ObjectId format for filter field ${field}: ${req.query[field]}`);
+                // Optionally, send a 400 error for invalid ObjectId format
+                // return res.status(400).json({ message: `Invalid ObjectId format for filter field ${field}` });
+             }
+          } else {
+            // Exact matching for other types (numbers, booleans, etc.)
+            filter[field] = req.query[field];
+          }
+        }
+      }
+    }
+
+    // Search functionality
+    const searchTerm = req.query.search;
+    const searchConditions = [];
+    const searchableFields = [
+      'name', 'manufacturer', 'saltComposition', 'batchNumber',
+      'hsnCode', 'scheduleType', 'barcode'
+    ];
+
+    if (searchTerm) {
+      const searchRegex = new RegExp(searchTerm, 'i');
+      for (const field of searchableFields) {
+        searchConditions.push({ [field]: searchRegex });
+      }
+    }
+
+    // Combine filter and search conditions
+    let query = filter;
+    if (searchConditions.length > 0) {
+      if (Object.keys(filter).length > 0) {
+        // If both filter and search are present, use $and
+        query = { $and: [filter, { $or: searchConditions }] };
+      } else {
+        // If only search is present, use $or
+        query = { $or: searchConditions };
+      }
+    }
+
+    const medicines = await Medicine.find(query)
+      .populate('supplier', 'name contactPerson')
+      .populate('lastUpdatedBy', 'username email')
+      .sort({ [sortField]: sortOrder })
       .skip(skip)
       .limit(limit);
     
-    const totalMedicines = await Medicine.countDocuments();
+    const totalMedicines = await Medicine.countDocuments(query);
 
     res.json({
         medicines,
         currentPage: page,
         totalPages: Math.ceil(totalMedicines / limit),
-        totalCount: totalMedicines
+        totalCount: totalMedicines,
+        sortInfo: {
+          sortBy: sortField,
+          sortOrder: sortOrder === 1 ? 'asc' : 'desc'
+        },
+        filterInfo: filter, // Include applied filters
+        searchInfo: searchTerm // Include applied search term
     });
   } catch (err) {
     logger.error(`Error fetching all medicines: ${err.message}`, { stack: err.stack, user: req.user ? req.user.username : 'N/A' });
