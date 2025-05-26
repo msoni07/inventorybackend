@@ -67,10 +67,6 @@ const MedicineSchema = new mongoose.Schema({
     unique: true,
     sparse: true, // Allows multiple documents to have a null value for barcode
   },
-  supplier: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Supplier', // Assuming a Supplier model will exist
-  },
   lastUpdatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

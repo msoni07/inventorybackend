@@ -13,7 +13,6 @@ const addMedicineSchema = Joi.object({
   gstPercentage: Joi.number().min(0).max(100).optional().default(0),
   scheduleType: Joi.string().valid('Generic', 'Schedule H', 'Schedule H1', 'Schedule X', 'OTC', 'Other').optional().default('Other'),
   barcode: Joi.string().trim().alphanum().allow('').optional(),
-  supplier: Joi.string().hex().length(24).allow(null).optional(), // Assuming MongoDB ObjectId string
 });
 
 const updateMedicineSchema = Joi.object({
@@ -29,7 +28,6 @@ const updateMedicineSchema = Joi.object({
   gstPercentage: Joi.number().min(0).max(100).optional(),
   scheduleType: Joi.string().valid('Generic', 'Schedule H', 'Schedule H1', 'Schedule X', 'OTC', 'Other').optional(),
   barcode: Joi.string().trim().alphanum().allow('').optional(),
-  supplier: Joi.string().hex().length(24).allow(null).optional(),
 }).min(1); // Requires at least one field to be present for an update
 
 module.exports = {

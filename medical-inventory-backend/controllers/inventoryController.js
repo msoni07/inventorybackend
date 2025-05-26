@@ -18,7 +18,6 @@ const addMedicine = async (req, res) => {
       gstPercentage,
       scheduleType,
       barcode,
-      supplier,
     } = req.body;
 
     // Check for existing medicine by batchNumber or barcode (if provided and unique)
@@ -48,7 +47,6 @@ const addMedicine = async (req, res) => {
       gstPercentage,
       scheduleType,
       barcode,
-      supplier, // Assuming supplier ID is sent in the request if available
       lastUpdatedBy: req.user._id, // Populated by 'protect' middleware
     });
 
@@ -56,17 +54,7 @@ const addMedicine = async (req, res) => {
     logger.info(`Medicine added successfully: ${savedMedicine.name} (ID: ${savedMedicine._id}), Batch: ${savedMedicine.batchNumber}, Added by: ${req.user.username}`);
     res.status(201).json({ message: 'Medicine added successfully', medicine: savedMedicine });
   } catch (err) {
-    logger.error(`Error adding medicine (Name: ${req.body.name}, Batch: ${req.body.batchNumber}): ${err.message}`, { stack: err.stack, user: req.user.username });
-    // Check for Mongoose duplicate key error (code 11000)
-    if (err.code === 11000) {
-        if (err.keyPattern && err.keyPattern.batchNumber) {
-            return res.status(400).json({ message: `Duplicate batch number: ${err.keyValue.batchNumber}` });
-        }
-        if (err.keyPattern && err.keyPattern.barcode) {
-            return res.status(400).json({ message: `Duplicate barcode: ${err.keyValue.barcode}` });
-        }
-        return res.status(400).json({ message: 'Duplicate key error. Check batch number or barcode.' });
-    }
+    logger.error(`Error adding medicine: ${err.message}`, { stack: err.stack, user: req.user ? req.user.username : 'N/A' });
     res.status(500).json({ message: 'Server error while adding medicine', error: err.message });
   }
 };
@@ -170,7 +158,6 @@ const getAllMedicines = async (req, res) => {
     }
 
     const medicines = await Medicine.find(query)
-      .populate('supplier', 'name contactPerson')
       .populate('lastUpdatedBy', 'username email')
       .sort({ [sortField]: sortOrder })
       .skip(skip)
@@ -200,7 +187,6 @@ const getAllMedicines = async (req, res) => {
 const getMedicineById = async (req, res) => {
   try {
     const medicine = await Medicine.findById(req.params.id)
-      .populate('supplier', 'name contactPerson')
       .populate('lastUpdatedBy', 'username email');
 
     if (!medicine) {
@@ -227,7 +213,6 @@ const updateMedicine = async (req, res) => {
     // Ensure updatedAt is set
     updateData.updatedAt = Date.now();
 
-
     // Check for potential duplicate batchNumber or barcode if they are being changed
     if (updateData.batchNumber) {
         const existingBatch = await Medicine.findOne({ batchNumber: updateData.batchNumber, _id: { $ne: id } });
@@ -246,8 +231,7 @@ const updateMedicine = async (req, res) => {
       id,
       { $set: updateData },
       { new: true, runValidators: true } // new: true returns the updated document, runValidators ensures schema validation
-    ).populate('supplier', 'name contactPerson')
-     .populate('lastUpdatedBy', 'username email');
+    ).populate('lastUpdatedBy', 'username email');
 
     if (!updatedMedicine) {
       return res.status(404).json({ message: 'Medicine not found' });

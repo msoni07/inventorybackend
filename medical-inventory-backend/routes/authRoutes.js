@@ -1,30 +1,29 @@
 const express = require('express');
 const router = express.Router();
-const authController = require('../controllers/authController');
+const { register, login, getMe, updateUser } = require('../controllers/authController');
+const { protect } = require('../middlewares/authMiddleware');
 const { validateRequest } = require('../middlewares/validationMiddleware');
-const { registerSchema, loginSchema } = require('../validators/authValidators');
+const { registerSchema, loginSchema, updateUserSchema } = require('../validators/authValidators');
+const { authorize } = require('../middlewares/rbacMiddleware'); // Assuming rbacMiddleware is needed for future user management permissions
 
 // @route   POST api/auth/register
 // @desc    Register a new user
-// @access  Public
-router.post('/register', validateRequest(registerSchema), authController.register);
+// @access  Public (or Private with Admin/Manager role if registration is restricted)
+router.post('/register', validateRequest(registerSchema), register);
 
 // @route   POST api/auth/login
-// @desc    Authenticate user & get token
+// @desc    Authenticate a user and get a JWT token
 // @access  Public
-router.post('/login', validateRequest(loginSchema), authController.login);
+router.post('/login', validateRequest(loginSchema), login);
 
 // @route   GET api/auth/me
-// @desc    Get current logged-in user's profile
+// @desc    Get the profile of the currently logged-in user
 // @access  Private
-const { protect } = require('../middlewares/authMiddleware');
-router.get('/me', protect, (req, res) => {
-  // req.user is populated by the 'protect' middleware
-  if (!req.user) {
-    return res.status(404).json({ message: 'User not found' });
-  }
-  // Send back user information (excluding password, which is already handled by the middleware)
-  res.json(req.user);
-});
+router.get('/me', protect, getMe);
+
+// @route   PUT api/auth/users/:id
+// @desc    Update a user's information (including role for Admin)
+// @access  Private (Admin can update any user, User can update their own profile except role)
+router.put('/users/:id', protect, validateRequest(updateUserSchema), updateUser);
 
 module.exports = router;

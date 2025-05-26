@@ -84,7 +84,7 @@ const sampleMedicines = [
   }
 ];
 
-// Generate additional 45 medicines with random variations
+// Generate additional 95 medicines with random variations
 const generateAdditionalMedicines = () => {
   const manufacturers = ["ABC Pharma", "XYZ Meds", "HealthPlus", "MediCorp", "DiabeCare", "LifeCare", "Wellness Pharma"];
   const saltCompositions = ["Paracetamol", "Amoxicillin", "Omeprazole", "Cetirizine", "Metformin", "Azithromycin", "Pantoprazole"];
@@ -93,7 +93,7 @@ const generateAdditionalMedicines = () => {
   
   const additionalMedicines = [];
   
-  for (let i = 6; i <= 50; i++) {
+  for (let i = 6; i <= 100; i++) {
     const manufacturer = manufacturers[Math.floor(Math.random() * manufacturers.length)];
     const saltComposition = saltCompositions[Math.floor(Math.random() * saltCompositions.length)];
     const scheduleType = scheduleTypes[Math.floor(Math.random() * scheduleTypes.length)];

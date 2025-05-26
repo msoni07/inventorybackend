@@ -4,6 +4,10 @@ const connectDB = require('./config/db');
 const logger = require('./config/logger'); // Import logger
 const cors = require('cors'); // Import cors
 
+// Import models
+require('./models/User');
+require('./models/Medicine');
+
 // Connect to database
 connectDB();
 
